@@ -23,6 +23,8 @@
  */
 defined('MOODLE_INTERNAL') || die;
 
+use report_mobile\output\devices_report;
+
 /**
  * Report mobile renderer's for printing reports.
  *
@@ -49,6 +51,44 @@ class report_mobile_renderer extends plugin_renderer_base {
         if ($reportlog->showreport) {
             $reportlog->tablelog->out($reportlog->perpage, true);
         }
+    }
+
+    /**
+     * Render devices report.
+     *
+     * @param report_mobile_renderable $reportlog object of report_mobile.
+     */
+    protected function render_devices_report(\report_mobile\output\devices_report $report) {
+        $report->devicestable->out(0, true);
+    }
+
+    /**
+     * Render the navigation tabs for the completion page.
+     *
+     * @param int|stdClass $courseorid the course object or id.
+     * @param String $page the tab to focus.
+     * @return string html
+     */
+    public function devices_report_navigation($report) {
+        $tabs = array();
+        $tabs[] = new tabobject(
+            devices_report::REPORT_PLATFORMS,
+            new moodle_url('/report/mobile/devices.php', ['report' => devices_report::REPORT_PLATFORMS]),
+            new lang_string('platform', 'report_mobile')
+        );
+
+        $tabs[] = new tabobject(
+            devices_report::REPORT_MODELS,
+            new moodle_url('/report/mobile/devices.php', ['report' => devices_report::REPORT_MODELS]),
+            new lang_string('model', 'report_mobile')
+        );
+
+        $tabs[] = new tabobject(
+            devices_report::REPORT_VERSIONS,
+            new moodle_url('/report/mobile/devices.php', ['report' => devices_report::REPORT_VERSIONS]),
+            new lang_string('version', 'report_mobile')
+        );
+        return $this->tabtree($tabs, $report);
     }
 
     /**

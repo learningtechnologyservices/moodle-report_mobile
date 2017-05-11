@@ -23,9 +23,17 @@
  */
 
 $string['allsources'] = 'All sources';
+$string['devicefirstused'] = 'Device first used';
+$string['devicelastused'] = 'Device last used';
+$string['filterbydate'] = 'Filter by date';
+$string['model'] = 'Device model';
 $string['mobileapp'] = 'Mobile app';
 $string['nologreaderenabled'] = 'No log reader enabled';
 $string['origin'] = 'Origin';
+$string['platform'] = 'Device platform';
 $string['pluginname'] = 'Mobile app usage';
+$string['userdevicesreport'] = 'User devices';
+$string['userdevicesreportdetailed'] = 'Devices that used the Mobile app in the site';
+$string['version'] = 'Device version';
 $string['web'] = 'Web';
 $string['ws'] = 'Web Services (including Mobile app one)';

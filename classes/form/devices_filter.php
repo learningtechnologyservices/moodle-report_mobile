@@ -15,21 +15,36 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains settings used by logs report.
+ * Devices report form date filter.
  *
  * @package    report_mobile
  * @copyright  2017 Juan Leyva
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+namespace report_mobile\form;
+defined('MOODLE_INTERNAL') || die();
 
-if (!empty($CFG->enablemobilewebservice)) {
-    $ADMIN->add('reports', new admin_externalpage('reportmobile', get_string('pluginname', 'report_mobile'),
-        $CFG->wwwroot . "/report/mobile/index.php", 'report/mobile:view'));
-    $ADMIN->add('reports', new admin_externalpage('userdevicesreport', get_string('userdevicesreport', 'report_mobile'),
-        $CFG->wwwroot . "/report/mobile/devices.php", 'report/mobile:view'));
+use moodleform;
+
+require_once($CFG->libdir . '/formslib.php');
+
+/**
+ * Devices report form date filter.
+ *
+ * @package    report_mobile
+ * @copyright  2017 Juan Leyva
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class devices_filter extends moodleform {
+
+    public function definition() {
+        $mform = $this->_form;
+
+        $mform->addElement('date_time_selector', 'timestart', get_string('devicefirstused', 'report_mobile'));
+        $mform->addElement('date_time_selector', 'timeend', get_string('devicelastused', 'report_mobile'));
+        $mform->addElement('submit', 'submit', get_string('filterbydate', 'report_mobile'));
+    }
+
 }
 
-// No report settings.
-$settings = null;
