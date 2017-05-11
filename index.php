@@ -24,24 +24,73 @@
 
 require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
+require_once($CFG->libdir . '/tablelib.php');
 
-$courseid = optional_param('courseid', 0, PARAM_INT);
-$cmid = optional_param('cmid', 0, PARAM_INT);
+$id          = optional_param('id', 0, PARAM_INT); // Course id.
+$modid       = optional_param('modid', 0, PARAM_INT); // Course module id.
+$group       = optional_param('group', 0, PARAM_INT); // Group to display.
+$user        = optional_param('user', 0, PARAM_INT); // User to display.
+$date        = optional_param('date', 0, PARAM_INT); // Date to display.
+$modaction   = optional_param('modaction', '', PARAM_ALPHAEXT); // An action as recorded in the logs.
+$showcourses = optional_param('showcourses', false, PARAM_BOOL); // Whether to show courses if we're over our limit.
+$showusers   = optional_param('showusers', false, PARAM_BOOL); // Whether to show users if we're over our limit.
+$chooselog   = optional_param('chooselog', false, PARAM_BOOL);
+$logformat   = optional_param('download', '', PARAM_ALPHA);
+$logreader   = optional_param('logreader', '', PARAM_COMPONENT); // Reader which will be used for displaying logs.
+$edulevel    = optional_param('edulevel', -1, PARAM_INT); // Educational level.
+$origin      = optional_param('origin', '', PARAM_TEXT); // Event origin.
 
 $params = array();
-if (!empty($courseid)) {
-    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
+
+if ($id !== 0) {
+    $params['id'] = $id;
+}
+if ($modid !== 0) {
+    $params['modid'] = $modid;
+}
+if ($group !== 0) {
+    $params['group'] = $group;
+}
+if ($user !== 0) {
+    $params['user'] = $user;
+}
+if ($date !== 0) {
+    $params['date'] = $date;
+}
+if ($modaction !== '') {
+    $params['modaction'] = $modaction;
+}
+if ($showcourses) {
+    $params['showcourses'] = $showcourses;
+}
+if ($showusers) {
+    $params['showusers'] = $showusers;
+}
+if ($chooselog) {
+    $params['chooselog'] = $chooselog;
+}
+if ($logformat !== '') {
+    $params['download'] = $logformat;
+}
+if ($logreader !== '') {
+    $params['logreader'] = $logreader;
+}
+if (($edulevel != -1)) {
+    $params['edulevel'] = $edulevel;
+}
+
+if (!empty($id)) {
+    $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
     require_login($course);
     $context = context_course::instance($course->id);
-    $params['courseid'] = $courseid;
-} else if (!empty($cmid)) {
-    $cm = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+} else if (!empty($modid)) {
+    $cm = get_coursemodule_from_id(null, $modid, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     require_login($course, false, $cm);
     $context = context_module::instance($cm->id);
-    $params['cmid'] = $cmid;
 } else {
     require_login();
+    $course = $DB->get_record('course', array('id' => SITEID), '*', MUST_EXIST);
     $context = context_system::instance();
     admin_externalpage_setup('reportmobile', '', null, '', array('pagelayout' => 'report'));
 }
@@ -56,6 +105,51 @@ $PAGE->set_title($reportname);
 $PAGE->set_heading($reportname);
 $PAGE->set_pagelayout('report');
 
-echo $OUTPUT->header();
+$reportlog = new report_mobile_renderable($logreader, $course, $user, $modid, $modaction, $group, $edulevel, $showcourses, $showusers,
+        $chooselog, true, $url, $date, $logformat, $origin);
+$readers = $reportlog->get_readers();
+$output = $PAGE->get_renderer('report_mobile');
 
-echo $OUTPUT->footer();
+if (empty($readers)) {
+    echo $output->header();
+    echo $output->heading(get_string('nologreaderenabled', 'report_mobile'));
+} else {
+    if (!empty($chooselog)) {
+            // Trigger a report viewed event.
+            $event = \report_mobile\event\report_viewed::create(array('context' => $context, 'relateduserid' => $user,
+                'other' => array('groupid' => $group, 'date' => $date, 'modid' => $modid, 'modaction' => $modaction,
+                'logformat' => $logformat)));
+            $event->trigger();
+
+        // Delay creation of table, till called by user with filter.
+        $reportlog->setup_table();
+
+        if (empty($logformat)) {
+            echo $output->header();
+            $userinfo = get_string('allparticipants');
+            $dateinfo = get_string('alldays');
+
+            if ($user) {
+                $u = $DB->get_record('user', array('id' => $user, 'deleted' => 0), '*', MUST_EXIST);
+                $userinfo = fullname($u, has_capability('moodle/site:viewfullnames', $context));
+            }
+            if ($date) {
+                $dateinfo = userdate($date, get_string('strftimedaydate'));
+            }
+            if (!empty($course) && ($course->id != SITEID)) {
+                $PAGE->navbar->add("$userinfo, $dateinfo");
+            }
+            echo $output->render($reportlog);
+        } else {
+            \core\session\manager::write_close();
+            $reportlog->download();
+            exit();
+        }
+    } else {
+        echo $output->header();
+        echo $output->heading(get_string('chooselogs') .':');
+        echo $output->render($reportlog);
+    }
+}
+
+echo $output->footer();

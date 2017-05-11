@@ -22,4 +22,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['allsources'] = 'All sources';
+$string['mobileapp'] = 'Mobile app';
+$string['nologreaderenabled'] = 'No log reader enabled';
+$string['origin'] = 'Origin';
 $string['pluginname'] = 'Mobile app usage';
+$string['web'] = 'Web';
+$string['ws'] = 'Web Services (including Mobile app one)';

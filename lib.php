@@ -41,7 +41,7 @@ function report_mobile_extend_navigation_course($navigation, $course, $context) 
     }
 
     if (has_capability('report/mobile:view', $context)) {
-        $url = new moodle_url('/report/mobile/index.php', array('courseid' => $course->id));
+        $url = new moodle_url('/report/mobile/index.php', array('id' => $course->id));
         $name = get_string('pluginname', 'report_mobile');
         $navigation->add($name, $url, navigation_node::TYPE_SETTING, null, null, new pix_icon('i/report', ''));
     }
@@ -61,7 +61,7 @@ function report_mobile_extend_navigation_module($navigation, $cm) {
     }
 
     if (has_capability('report/mobile:view', context_module::instance($cm->id))) {
-        $url = new moodle_url('/report/mobile/index.php', array('cmid' => $cm->id));
+        $url = new moodle_url('/report/mobile/index.php', array('modid' => $cm->id));
         $name = get_string('pluginname', 'report_mobile');
         $navigation->add($name, $url, navigation_node::TYPE_SETTING, null, null, null);
     }
@@ -75,7 +75,7 @@ function report_mobile_extend_navigation_module($navigation, $cm) {
  * @return bool returns true if the store is supported by the report, false otherwise.
  */
 function report_mobile_supports_logstore($instance) {
-    if ($instance instanceof \core\log\sql_reader) {
+    if ($instance instanceof \core\log\sql_internal_table_reader) {
         return true;
     }
     return false;
