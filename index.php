@@ -26,58 +26,13 @@ require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/tablelib.php');
 
-$id          = optional_param('id', 0, PARAM_INT); // Course id.
-$modid       = optional_param('modid', 0, PARAM_INT); // Course module id.
-$group       = optional_param('group', 0, PARAM_INT); // Group to display.
-$user        = optional_param('user', 0, PARAM_INT); // User to display.
-$date        = optional_param('date', 0, PARAM_INT); // Date to display.
-$modaction   = optional_param('modaction', '', PARAM_ALPHAEXT); // An action as recorded in the logs.
-$showcourses = optional_param('showcourses', false, PARAM_BOOL); // Whether to show courses if we're over our limit.
-$showusers   = optional_param('showusers', false, PARAM_BOOL); // Whether to show users if we're over our limit.
-$chooselog   = optional_param('chooselog', false, PARAM_BOOL);
-$logformat   = optional_param('download', '', PARAM_ALPHA);
-$logreader   = optional_param('logreader', '', PARAM_COMPONENT); // Reader which will be used for displaying logs.
-$edulevel    = optional_param('edulevel', -1, PARAM_INT); // Educational level.
-$origin      = optional_param('origin', '', PARAM_TEXT); // Event origin.
+use report_mobile\form\usage_filter;
+use report_mobile\output\usage_report;
 
-$params = array();
+$id       = optional_param('id', 0, PARAM_INT); // Course id.
+$modid    = optional_param('modid', 0, PARAM_INT); // Course module id.
+$download = optional_param('download', '', PARAM_ALPHA);
 
-if ($id !== 0) {
-    $params['id'] = $id;
-}
-if ($modid !== 0) {
-    $params['modid'] = $modid;
-}
-if ($group !== 0) {
-    $params['group'] = $group;
-}
-if ($user !== 0) {
-    $params['user'] = $user;
-}
-if ($date !== 0) {
-    $params['date'] = $date;
-}
-if ($modaction !== '') {
-    $params['modaction'] = $modaction;
-}
-if ($showcourses) {
-    $params['showcourses'] = $showcourses;
-}
-if ($showusers) {
-    $params['showusers'] = $showusers;
-}
-if ($chooselog) {
-    $params['chooselog'] = $chooselog;
-}
-if ($logformat !== '') {
-    $params['download'] = $logformat;
-}
-if ($logreader !== '') {
-    $params['logreader'] = $logreader;
-}
-if (($edulevel != -1)) {
-    $params['edulevel'] = $edulevel;
-}
 
 if (!empty($id)) {
     $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
@@ -98,57 +53,82 @@ if (!empty($id)) {
 require_capability('report/mobile:view', $context);
 $PAGE->set_context($context);
 
-$url = new moodle_url('/report/mobile/index.php', $params);
-$PAGE->set_url('/report/mobile/index.php', $params);
+$url = new moodle_url('/report/mobile/index.php', array('id' => $id, 'modid' => $modid));
+$PAGE->set_url($url);
 $reportname = get_string('pluginname', 'report_mobile');
 $PAGE->set_title($reportname);
 $PAGE->set_heading($reportname);
 $PAGE->set_pagelayout('report');
 
-$reportlog = new report_mobile_renderable($logreader, $course, $user, $modid, $modaction, $group, $edulevel, $showcourses, $showusers,
-        $chooselog, true, $url, $date, $logformat, $origin);
-$readers = $reportlog->get_readers();
-$output = $PAGE->get_renderer('report_mobile');
+$readers = usage_report::get_readers();
 
 if (empty($readers)) {
     echo $output->header();
     echo $output->heading(get_string('nologreaderenabled', 'report_mobile'));
 } else {
-    if (!empty($chooselog)) {
-            // Trigger a report viewed event.
-            $event = \report_mobile\event\report_viewed::create(array('context' => $context, 'relateduserid' => $user,
-                'other' => array('groupid' => $group, 'date' => $date, 'modid' => $modid, 'modaction' => $modaction,
-                'logformat' => $logformat)));
-            $event->trigger();
+    $output = $PAGE->get_renderer('report_mobile');
 
-        // Delay creation of table, till called by user with filter.
-        $reportlog->setup_table();
+    $form = new usage_filter($url->out(false));
+    if ($form->is_cancelled()) {
+        redirect($url);
+    }
+    // Filter data.
+    $data = $form->get_data();
 
-        if (empty($logformat)) {
-            echo $output->header();
-            $userinfo = get_string('allparticipants');
-            $dateinfo = get_string('alldays');
+    $logreader = null;
+    // Check if the filtering form was submitted.
+    if ($data) {
+        $timestart = $data->timestart;
+        $timeend = $data->timeend;
+        $logreader = $data->logreader;
+        $origin = $data->origin;
+        $modaction = $data->modaction;
+    } else {
+        // Try to retrieve timestart and timeend from the URL, will be set in the URL so pagination and download work.
+        $timestart = optional_param('timestart', 0, PARAM_INT);
+        $timeend = optional_param('timeend', 0, PARAM_INT);
+        if ($timestart && $timeend) {
+            $origin = required_param('origin', PARAM_ALPHA);
+            $modaction = required_param('modaction', PARAM_ALPHA);
+            $logreader = required_param('logreader', PARAM_PLUGIN);
+        }
+    }
 
-            if ($user) {
-                $u = $DB->get_record('user', array('id' => $user, 'deleted' => 0), '*', MUST_EXIST);
-                $userinfo = fullname($u, has_capability('moodle/site:viewfullnames', $context));
-            }
-            if ($date) {
-                $dateinfo = userdate($date, get_string('strftimedaydate'));
-            }
-            if (!empty($course) && ($course->id != SITEID)) {
-                $PAGE->navbar->add("$userinfo, $dateinfo");
-            }
-            echo $output->render($reportlog);
-        } else {
-            \core\session\manager::write_close();
-            $reportlog->download();
-            exit();
+    // Log reader set it means that we receive the form or the request for download the table.
+    if ($logreader) {
+        $url = new moodle_url('/report/mobile/index.php',
+            array(
+                'id' => $id,
+                'modid' => $modid,
+                'timestart' => $timestart,
+                'timeend' => $timeend,
+                'logreader' => $logreader,
+                'origin' => $origin,
+                'modaction' => $modaction,
+            )
+        );
+
+        $usagereport = new usage_report($id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url, $download);
+        $usagereport->setup_table();
+    }
+
+    // Trigger a report viewed event.
+    //$event = \report_mobile\event\usage_report_viewed::create(array('context' => $context, 'relateduserid' => $user,
+    //    'other' => array('groupid' => $group, 'date' => $date, 'modid' => $modid, 'modaction' => $modaction,
+    //    'logformat' => $logformat)));
+    //$event->trigger();
+
+    if (empty($download)) {
+        echo $output->header();
+        // Display date filters.
+        $form->display();
+        if ($logreader) {
+            echo $output->render($usagereport);
         }
     } else {
-        echo $output->header();
-        echo $output->heading(get_string('chooselogs') .':');
-        echo $output->render($reportlog);
+        \core\session\manager::write_close();
+        $usagereport->download();
+        exit();
     }
 }
 

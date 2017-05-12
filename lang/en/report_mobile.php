@@ -23,6 +23,8 @@
  */
 
 $string['allsources'] = 'All sources';
+$string['dateend'] = 'End date';
+$string['datestart'] = 'Start date';
 $string['devicefirstused'] = 'Device first used';
 $string['devicelastused'] = 'Device last used';
 $string['filterbydate'] = 'Filter by date';
@@ -32,6 +34,8 @@ $string['nologreaderenabled'] = 'No log reader enabled';
 $string['origin'] = 'Origin';
 $string['platform'] = 'Device platform';
 $string['pluginname'] = 'Mobile app usage';
+$string['source'] = 'Source';
+$string['startdategreaterthanend'] = 'Start date can\'t be greater than end date.';
 $string['userdevicesreport'] = 'User devices';
 $string['userdevicesreportdetailed'] = 'Devices that used the Mobile app in the site';
 $string['version'] = 'Device version';

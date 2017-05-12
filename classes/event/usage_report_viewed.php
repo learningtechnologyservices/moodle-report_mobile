@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * The report_mobile report viewed event.
+ * The report_mobile usage report viewed event.
  *
  * @package    report_mobile
  * @copyright  2017 Juan Leyva
@@ -26,13 +26,11 @@ namespace report_mobile\event;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * The report_mobile report viewed event class.
+ * The report_mobile usage report viewed event class.
  *
  * @property-read array $other {
  *      Extra information about the event.
  *
- *      - int groupid: Group to display.
- *      - int date: Date to display logs from.
  *      - int modid: Module id for which logs were displayed.
  *      - string modaction: Module action.
  *      - string logformat: Log format in which logs were displayed.
@@ -42,7 +40,7 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright  2017 Juan Leyva
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class report_viewed extends \core\event\base {
+class usage_report_viewed extends \core\event\base {
 
     /**
      * Init method.
@@ -98,13 +96,6 @@ class report_viewed extends \core\event\base {
      */
     protected function validate_data() {
         parent::validate_data();
-        if (!isset($this->other['groupid'])) {
-            throw new \coding_exception('The \'groupid\' value must be set in other.');
-        }
-
-        if (!isset($this->other['date'])) {
-            throw new \coding_exception('The \'date\' value must be set in other.');
-        }
 
         if (!isset($this->other['modid'])) {
             throw new \coding_exception('The \'modid\' value must be set in other.');
@@ -126,7 +117,6 @@ class report_viewed extends \core\event\base {
     public static function get_other_mapping() {
         $othermapped = array();
         $othermapped['modid'] = array('db' => 'course_modules', 'restore' => 'course_module');
-        $othermapped['groupid'] = array('db' => 'groups', 'restore' => 'group');
 
         return $othermapped;
     }

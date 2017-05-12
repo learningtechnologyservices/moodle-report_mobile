@@ -22,7 +22,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace report_mobile\output;
 defined('MOODLE_INTERNAL') || die;
+
+use table_sql;
 
 /**
  * Table mobile class for displaying logs.
@@ -31,7 +34,7 @@ defined('MOODLE_INTERNAL') || die;
  * @copyright  2017 Juan Leyva
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class report_mobile_table_log extends table_sql {
+class table_usage extends table_sql {
 
     /** @var array list of user fullnames shown in report */
     private $userfullnames = array();
@@ -61,7 +64,7 @@ class report_mobile_table_log extends table_sql {
         $this->set_attribute('class', 'reportlog generaltable generalbox');
         $this->filterparams = $filterparams;
 
-        $cols = array('date');
+        $cols = array('timeperiod');
         $headers = array(get_string('date'));
 
         if (empty($filterparams->origin) || $filterparams->origin == 'web') {
@@ -73,6 +76,9 @@ class report_mobile_table_log extends table_sql {
             $str = $filterparams->mobileonly ? get_string('mobileapp', 'report_mobile') : get_string('ws', 'report_mobile');
             $headers[] = $str;
         }
+
+        $this->filterparams->timestart = usergetmidnight($this->filterparams->timestart);
+        $this->filterparams->timeend = usergetmidnight($this->filterparams->timeend) + DAYSECS - 1;
 
         $this->define_columns($cols);
         $this->define_headers($headers);
@@ -134,18 +140,9 @@ class report_mobile_table_log extends table_sql {
         // If we filter by userid and module id we also need to filter by crud and edulevel to ensure DB index is engaged.
         $useextendeddbindex = !empty($this->filterparams->userid) && !empty($this->filterparams->modid);
 
-        $groupid = 0;
         if (!empty($this->filterparams->courseid) && $this->filterparams->courseid != SITEID) {
-            if (!empty($this->filterparams->groupid)) {
-                $groupid = $this->filterparams->groupid;
-            }
-
             $joins[] = "courseid = :courseid";
             $params['courseid'] = $this->filterparams->courseid;
-        }
-
-        if (!empty($this->filterparams->siteerrors)) {
-            $joins[] = "( action='error' OR action='infected' OR action='failed' )";
         }
 
         if (!empty($this->filterparams->modid)) {
@@ -160,40 +157,137 @@ class report_mobile_table_log extends table_sql {
             $params = array_merge($params, $actionparams);
         }
 
-        // Getting all members of a group.
-        if ($groupid and empty($this->filterparams->userid)) {
-            if ($gusers = groups_get_members($groupid)) {
-                $gusers = array_keys($gusers);
-                $joins[] = 'userid IN (' . implode(',', $gusers) . ')';
-            } else {
-                $joins[] = 'userid = 0'; // No users in groups, so we want something that will always be false.
-            }
-        } else if (!empty($this->filterparams->userid)) {
+        if (!empty($this->filterparams->userid)) {
             $joins[] = "userid = :userid";
             $params['userid'] = $this->filterparams->userid;
         }
 
-        if (!empty($this->filterparams->date)) {
-            $joins[] = "timecreated > :date AND timecreated < :enddate";
-            $params['date'] = $this->filterparams->date;
-            $params['enddate'] = $this->filterparams->date + DAYSECS; // Show logs only for the selected date.
+        // Origin.
+        $groupby = "";
+        if (!empty($this->filterparams->origin)) {
+            $joins[] = "origin = :origin";
+            $params['origin'] = $this->filterparams->origin;
+        } else {
+            $joins[] = "(origin = :origin1 OR origin = :origin2)";
+            $params['origin1'] = 'web';
+            $params['origin2'] = 'ws';
+            $groupby = 'GROUP BY origin';
         }
 
-        if (isset($this->filterparams->edulevel) && ($this->filterparams->edulevel >= 0)) {
-            $joins[] = "edulevel = :edulevel";
-            $params['edulevel'] = $this->filterparams->edulevel;
-        } else if ($useextendeddbindex) {
-            list($edulevelsql, $edulevelparams) = $DB->get_in_or_equal(array(\core\event\base::LEVEL_OTHER,
-                \core\event\base::LEVEL_PARTICIPATING, \core\event\base::LEVEL_TEACHING), SQL_PARAMS_NAMED, 'edulevel');
-            $joins[] = "edulevel ".$edulevelsql;
-            $params = array_merge($params, $edulevelparams);
-        }
-
+        $joins[] = "timecreated > :timestart AND timecreated < :timeend";
         $joins[] = "anonymous = 0";
-
         $selector = implode(' AND ', $joins);
 
-        $this->rawdata = [['date' => 'Week 1', 'allsources' => 50, 'web' => 30, 'ws' => 20],
-            ['allsources' => 50, 'date' => 'Week 2', 'web' => 40, 'ws' => 10]];
+        // Get log table.
+        $logmanager = get_log_manager();
+        $readers = $logmanager->get_readers();
+        $reader = $readers[$this->filterparams->logreader];
+        $logtable = $reader->get_internal_log_table_name();
+
+        $timerange = $this->filterparams->timeend - $this->filterparams->timestart;
+
+        $ranges = array();
+        $lasttimeend = $this->filterparams->timestart - 1;
+
+        if ($timerange > YEARSECS) {
+            $timeformat = 'strftimedatefullshort';
+            $rangetype = get_string('year');
+            $rangeinc = YEARSECS;
+        } else if ($timerange > (WEEKSECS * 4)) {
+            $timeformat = 'strftimedatefullshort';
+            $rangetype = get_string('month');
+            $rangeinc = WEEKSECS * 4;
+        } else if ($timerange > WEEKSECS) {
+            $timeformat = 'strftimedatefullshort';
+            $rangetype = get_string('week');
+            $rangeinc = WEEKSECS;
+        } else if ($timerange > DAYSECS) { // Daily range.
+            $timeformat = 'strftimedayshort';
+            $rangetype = get_string('day');
+            $rangeinc = DAYSECS;
+        } else {    // Hourly range.
+            $timeformat = 'strftimedaytime';
+            $rangetype = get_string('hour');
+            $rangeinc = HOURSECS * 2;
+        }
+
+        while ($this->filterparams->timeend > $lasttimeend) {
+            $lasttimestart = $lasttimeend + 1;
+            $lasttimeend = $lasttimestart + $rangeinc;
+            if ($lasttimeend > $this->filterparams->timeend) {
+                $lasttimeend = $this->filterparams->timeend;
+            }
+            $ranges[] = array(
+                'timestart' => $lasttimestart,
+                'timeend' => $lasttimeend,
+            );
+        }
+
+        $this->rawdata = array();
+        foreach ($ranges as $i => $range) {
+            $params['timestart'] = $range['timestart'];
+            $params['timeend'] = $range['timeend'];
+
+            $sql = "SELECT origin, COUNT('x') as totalcount
+                      FROM {{$logtable}}
+                     WHERE $selector
+                     $groupby
+            ";
+            $records = $DB->get_records_sql($sql, $params);
+
+            $timeperiod = userdate($range['timeend'] - HOURSECS, get_string($timeformat, 'langconfig'));
+            $web = isset($records['web']) ? $records['web']->totalcount : 0;
+            $ws = isset($records['ws']) ? $records['ws']->totalcount : 0;
+            $this->rawdata[] = (object) ['timeperiod' => $timeperiod, 'web' => $web, 'ws' => $ws];
+        }
+    }
+
+    /**
+     * Convenience method to call a number of methods for you to display the
+     * table.
+     */
+    function display_chart_and_table($pagesize, $useinitialsbar, $downloadhelpbutton='', $output) {
+        global $DB;
+        if (!$this->columns) {
+            $onerow = $DB->get_record_sql("SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where}", $this->sql->params);
+            //if columns is not set then define columns as the keys of the rows returned
+            //from the db.
+            $this->define_columns(array_keys((array)$onerow));
+            $this->define_headers(array_keys((array)$onerow));
+        }
+        $this->setup();
+        $this->query_db($pagesize, $useinitialsbar);
+
+        $labels = array();
+        $labelwithcount = array();
+        $series = array('ws' => array(), 'web' => array());
+
+        reset($this->columns);
+        $key = key($this->columns);
+
+        $totalothers = 0;
+        $count = 0;
+        foreach ($this->rawdata as $row) {
+            $labels[] = $row->timeperiod;
+            if (isset($row->web)) {
+                $series['web'][] = $row->web;
+            }
+            if (isset($row->ws)) {
+                $series['ws'][] = $row->ws;
+            }
+        }
+
+        $chart = new \report_mobile\chartjs\chart_line();
+        $chart->set_smooth(true);
+        foreach ($series as $key => $serie) {
+            $key = ($key == 'ws' && $this->filterparams->mobileonly) ? 'mobileapp' : $key;
+            $reportserie = new \report_mobile\chartjs\chart_series(get_string($key, 'report_mobile'), $serie);
+            $chart->add_series($reportserie);
+        }
+        $chart->set_labels($labels);
+        echo $output->render($chart);
+
+        $this->build_table();
+        $this->finish_output();
     }
 }
