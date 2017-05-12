@@ -35,6 +35,56 @@ use report_mobile\output\devices_report;
 class report_mobile_renderer extends plugin_renderer_base {
 
     /**
+     * Renders a bar chart.
+     *
+     * @param \report_mobile\chartjs\chart_bar $chart The chart.
+     * @return string.
+     */
+    public function render_chart_bar(\report_mobile\chartjs\chart_bar $chart) {
+        return $this->render_chart($chart);
+    }
+
+    /**
+     * Renders a line chart.
+     *
+     * @param \report_mobile\chartjs\chart_line $chart The chart.
+     * @return string.
+     */
+    public function render_chart_line(\report_mobile\chartjs\chart_line $chart) {
+        return $this->render_chart($chart);
+    }
+
+    /**
+     * Renders a pie chart.
+     *
+     * @param \report_mobile\chartjs\chart_pie $chart The chart.
+     * @return string.
+     */
+    public function render_chart_pie(\report_mobile\chartjs\chart_pie $chart) {
+        return $this->render_chart($chart);
+    }
+
+    /**
+     * Renders a chart.
+     *
+     * @param \report_mobile\chartjs\chart_base $chart The chart.
+     * @param bool $withtable Whether to include a data table with the chart.
+     * @return string.
+     */
+    public function render_chart(\report_mobile\chartjs\chart_base $chart, $withtable = true) {
+        $id = 'chart' . uniqid();
+        // TODO Handle the canvas in the output module rather than here.
+        $canvas = html_writer::tag('canvas', '', ['id' => $id]);
+        $js = "require(['report_mobile/chart_builder', 'report_mobile/chart_output'], function(Builder, Output) {
+            Builder.make(" . json_encode($chart) . ").then(function(ChartInst) {
+                new Output('#" . $id . "', ChartInst);
+            });
+        });";
+        $this->page->requires->js_init_code($js, true);
+        return $canvas;
+    }
+
+    /**
      * Render log report page.
      *
      * @param report_mobile_renderable $reportlog object of report_mobile.
