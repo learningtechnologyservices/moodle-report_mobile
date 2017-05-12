@@ -109,7 +109,8 @@ class report_mobile_renderer extends plugin_renderer_base {
      * @param report_mobile_renderable $reportlog object of report_mobile.
      */
     protected function render_devices_report(\report_mobile\output\devices_report $report) {
-        $report->devicestable->out(0, true);
+
+        $report->devicestable->display_chart_and_table(0, false, '', $this);
     }
 
     /**

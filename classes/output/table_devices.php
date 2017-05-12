@@ -111,4 +111,44 @@ class table_devices extends table_sql {
         global $DB;
         $this->rawdata = $DB->get_records_sql($this->devquery, $this->params);
     }
+
+    /**
+     * Convenience method to call a number of methods for you to display the
+     * table.
+     */
+    function display_chart_and_table($pagesize, $useinitialsbar, $downloadhelpbutton='', $output) {
+        global $DB;
+        if (!$this->columns) {
+            $onerow = $DB->get_record_sql("SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where}", $this->sql->params);
+            //if columns is not set then define columns as the keys of the rows returned
+            //from the db.
+            $this->define_columns(array_keys((array)$onerow));
+            $this->define_headers(array_keys((array)$onerow));
+        }
+        $this->setup();
+        $this->query_db($pagesize, $useinitialsbar);
+
+        $labels = array();
+        $labelwithcount = array();
+        $series = array();
+
+        reset($this->columns);
+        $key = key($this->columns);
+
+        foreach ($this->rawdata as $row) {
+            $labels[] = $row->{$key};
+            $series[] = $row->totalcount;
+            $labelwithcount[] = $row->{$key} . ' ' . $row->totalcount;
+        }
+
+        $chart = new \report_mobile\chartjs\chart_pie();
+        $series = new \report_mobile\chartjs\chart_series(get_string('total'), $series);
+        $series->set_labels($labelwithcount);
+        $chart->add_series($series);
+        $chart->set_labels($labels);
+        echo $output->render($chart);
+
+        $this->build_table();
+        $this->finish_output();
+    }
 }
