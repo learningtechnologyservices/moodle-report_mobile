@@ -135,10 +135,21 @@ class table_devices extends table_sql {
         reset($this->columns);
         $key = key($this->columns);
 
+        $totalothers = 0;
+        $count = 0;
         foreach ($this->rawdata as $row) {
+            if ($count++ >= 9) {
+                $totalothers += $row->totalcount;
+                continue;
+            }
             $labels[] = $row->{$key};
             $series[] = $row->totalcount;
             $labelwithcount[] = $row->{$key} . ' ' . $row->totalcount;
+        }
+        if ($totalothers) {
+            $labels[] = get_string('other');
+            $series[] = $totalothers;
+            $labelwithcount[] = get_string('other') . ' ' . $totalothers;
         }
 
         $chart = new \report_mobile\chartjs\chart_pie();
