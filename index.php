@@ -32,7 +32,7 @@ use report_mobile\output\usage_report;
 $id       = optional_param('id', 0, PARAM_INT); // Course id.
 $modid    = optional_param('modid', 0, PARAM_INT); // Course module id.
 $download = optional_param('download', '', PARAM_ALPHA);
-
+$report   = optional_param('report', \report_mobile\output\usage_report::REPORT_TIMELINE, PARAM_INT);
 
 if (!empty($id)) {
     $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
@@ -53,7 +53,7 @@ if (!empty($id)) {
 require_capability('report/mobile:view', $context);
 $PAGE->set_context($context);
 
-$url = new moodle_url('/report/mobile/index.php', array('id' => $id, 'modid' => $modid));
+$url = new moodle_url('/report/mobile/index.php', array('id' => $id, 'modid' => $modid, 'report' => $report));
 $PAGE->set_url($url);
 $reportname = get_string('pluginname', 'report_mobile');
 $PAGE->set_title($reportname);
@@ -98,6 +98,7 @@ if (empty($readers)) {
     if ($logreader) {
         $url = new moodle_url('/report/mobile/index.php',
             array(
+                'report' => $report,
                 'id' => $id,
                 'modid' => $modid,
                 'timestart' => $timestart,
@@ -108,7 +109,8 @@ if (empty($readers)) {
             )
         );
 
-        $usagereport = new usage_report($id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url, $download);
+        $usagereport = new usage_report($report, $id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url,
+            $download);
         $usagereport->setup_table();
     }
 
@@ -120,6 +122,9 @@ if (empty($readers)) {
 
     if (empty($download)) {
         echo $output->header();
+        // Display tabs for the different reports.
+        echo $output->usage_report_navigation($id, $report);
+
         // Display date filters.
         $form->display();
         if ($logreader) {

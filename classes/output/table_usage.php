@@ -36,21 +36,8 @@ use table_sql;
  */
 class table_usage extends table_sql {
 
-    /** @var array list of user fullnames shown in report */
-    private $userfullnames = array();
-
-    /**
-     * @deprecated since Moodle 2.9 MDL-48595 - please do not use this argument any more.
-     * @todo MDL-49291 This will be deleted in 3.1
-     * @var array list of course short names shown in report.
-     */
-    private $courseshortnames = array();
-
-    /** @var array list of context name shown in report */
-    private $contextname = array();
-
     /** @var stdClass filters parameters */
-    private $filterparams;
+    protected $filterparams;
 
     /**
      * Sets up the table_log parameters.
@@ -125,15 +112,7 @@ class table_usage extends table_sql {
         return array($sql, $params);
     }
 
-    /**
-     * Query the reader. Store results in the object for use by build_table.
-     *
-     * @param int $pagesize size of page for paginated displayed table.
-     * @param bool $useinitialsbar do you want to use the initials bar.
-     */
-    public function query_db($pagesize, $useinitialsbar = true) {
-        global $DB;
-
+    public function get_base_selector() {
         $joins = array();
         $params = array();
 
@@ -175,6 +154,8 @@ class table_usage extends table_sql {
         }
 
         $joins[] = "timecreated > :timestart AND timecreated < :timeend";
+        $params['timestart'] = $this->filterparams->timestart;
+        $params['timeend'] = $this->filterparams->timeend;
         $joins[] = "anonymous = 0";
         $selector = implode(' AND ', $joins);
 
@@ -183,6 +164,20 @@ class table_usage extends table_sql {
         $readers = $logmanager->get_readers();
         $reader = $readers[$this->filterparams->logreader];
         $logtable = $reader->get_internal_log_table_name();
+
+        return array($logtable, $selector, $params, $groupby);
+    }
+
+    /**
+     * Query the reader. Store results in the object for use by build_table.
+     *
+     * @param int $pagesize size of page for paginated displayed table.
+     * @param bool $useinitialsbar do you want to use the initials bar.
+     */
+    public function query_db($pagesize, $useinitialsbar = true) {
+        global $DB;
+
+        list($logtable, $selector, $params, $groupby) = $this->get_base_selector();
 
         $timerange = $this->filterparams->timeend - $this->filterparams->timestart;
 

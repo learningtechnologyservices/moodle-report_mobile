@@ -24,6 +24,7 @@
 defined('MOODLE_INTERNAL') || die;
 
 use report_mobile\output\devices_report;
+use report_mobile\output\usage_report;
 
 /**
  * Report mobile renderer's for printing reports.
@@ -128,6 +129,30 @@ class report_mobile_renderer extends plugin_renderer_base {
             new moodle_url('/report/mobile/devices.php', ['report' => devices_report::REPORT_VERSIONS]),
             new lang_string('version', 'report_mobile')
         );
+        return $this->tabtree($tabs, $report);
+    }
+
+    /**
+     * Render the navigation tabs for the usage report.
+     *
+     * @param int $id the course id.
+     * @param string $report the tab to focus.
+     * @return string html
+     */
+    public function usage_report_navigation($id, $report) {
+        $tabs = array();
+        $tabs[] = new tabobject(
+            usage_report::REPORT_TIMELINE,
+            new moodle_url('/report/mobile/index.php', ['id' => $id, 'report' => usage_report::REPORT_TIMELINE]),
+            new lang_string('pluginname', 'report_mobile')
+        );
+
+        $tabs[] = new tabobject(
+            usage_report::REPORT_MODULES,
+            new moodle_url('/report/mobile/index.php', ['id' => $id, 'report' => usage_report::REPORT_MODULES]),
+            new lang_string('activitymodules')
+        );
+
         return $this->tabtree($tabs, $report);
     }
 }

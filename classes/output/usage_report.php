@@ -38,6 +38,12 @@ use renderable;
  */
 class usage_report implements renderable {
 
+    /** @var int to identify the type of report */
+    const REPORT_TIMELINE = 1;
+
+    /** @var int to identify the type of report */
+    const REPORT_MODULES = 2;
+
     public $id;
     public $modid;
     public $logreader;
@@ -53,16 +59,17 @@ class usage_report implements renderable {
     /**
      * Constructor.
      *
-     * @param string $logreader (optional)reader pluginname from which logs will be fetched.
+     * @param int $report the report id
      * @param stdClass|int $course (optional) course record or id
-     * @param int $userid (optional) id of user to filter records for.
      * @param int|string $modid (optional) module id or site_errors for filtering errors.
+     * @param string $logreader (optional)reader pluginname from which logs will be fetched.
      * @param string $action (optional) action name to filter.
      * @param moodle_url|string $url (optional) page url.
      * @param string $logformat log format.
      */
-    public function __construct($id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url, $download) {
+    public function __construct($report, $id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url, $download) {
 
+        $this->report = $report;
         $this->id = $id;
         $this->modid = $modid;
         $this->logreader = $logreader;
@@ -160,7 +167,11 @@ class usage_report implements renderable {
         $filter->download = $this->download;
         $filter->mobileonly = self::check_mobile_services();
 
-        $this->reporttable = new table_usage('report_mobile', $filter);
+        if ($this->report == self::REPORT_TIMELINE) {
+            $this->reporttable = new table_usage('report_mobile', $filter);
+        } else {
+            $this->reporttable = new table_usage_mod('report_mobile', $filter);
+        }
         $this->reporttable->define_baseurl($this->url);
         $this->reporttable->is_downloadable(true);
         $this->reporttable->show_download_buttons_at(array(TABLE_P_BOTTOM));
