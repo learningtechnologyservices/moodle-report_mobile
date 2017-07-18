@@ -34,26 +34,30 @@ $modid    = optional_param('modid', 0, PARAM_INT); // Course module id.
 $download = optional_param('download', '', PARAM_ALPHA);
 $report   = optional_param('report', \report_mobile\output\usage_report::REPORT_TIMELINE, PARAM_INT);
 
-if (!empty($id)) {
+if (!empty($modid)) {
+    $cm = get_coursemodule_from_id(null, $modid, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $id = $course->id;
+    require_login($course, false, $cm);
+    $context = context_module::instance($cm->id);
+    $urlparams = array('modid' => $modid);
+} else if (!empty($id)) {
     $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
     require_login($course);
     $context = context_course::instance($course->id);
-} else if (!empty($modid)) {
-    $cm = get_coursemodule_from_id(null, $modid, 0, false, MUST_EXIST);
-    $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-    require_login($course, false, $cm);
-    $context = context_module::instance($cm->id);
+    $urlparams = array('id' => $id);
 } else {
     require_login();
     $course = $DB->get_record('course', array('id' => SITEID), '*', MUST_EXIST);
     $context = context_system::instance();
     admin_externalpage_setup('reportmobile', '', null, '', array('pagelayout' => 'report'));
+    $urlparams = array();
 }
 
 require_capability('report/mobile:view', $context);
 $PAGE->set_context($context);
 
-$url = new moodle_url('/report/mobile/index.php', array('id' => $id, 'modid' => $modid, 'report' => $report));
+$url = new moodle_url('/report/mobile/index.php', $urlparams);
 $PAGE->set_url($url);
 $reportname = get_string('pluginname', 'report_mobile');
 $PAGE->set_title($reportname);
@@ -68,7 +72,10 @@ if (empty($readers)) {
 } else {
     $output = $PAGE->get_renderer('report_mobile');
 
-    $form = new usage_filter($url->out(false));
+    // Build the form URL (additional parameters to the normal report one).
+
+    $formurl = new moodle_url('/report/mobile/index.php', array('id' => $id, 'modid' => $modid, 'report' => $report));
+    $form = new usage_filter($formurl->out(false));
     if ($form->is_cancelled()) {
         redirect($url);
     }
