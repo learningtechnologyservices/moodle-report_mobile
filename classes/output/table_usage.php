@@ -184,15 +184,15 @@ class table_usage extends table_sql {
         $ranges = array();
         $lasttimeend = $this->filterparams->timestart - 1;
 
-        if ($timerange > YEARSECS) {
+        if ($timerange > 2 * YEARSECS) {    // For more than two years we do it yearly.
             $timeformat = 'strftimedatefullshort';
             $rangetype = get_string('year');
             $rangeinc = YEARSECS;
-        } else if ($timerange > (WEEKSECS * 4)) {
+        } else if ($timerange > YEARSECS) { // For one to two years we do it monthly.
             $timeformat = 'strftimedatefullshort';
             $rangetype = get_string('month');
             $rangeinc = WEEKSECS * 4;
-        } else if ($timerange > WEEKSECS) {
+        } else if ($timerange > WEEKSECS) { // For one week to one year we do it weekly.
             $timeformat = 'strftimedatefullshort';
             $rangetype = get_string('week');
             $rangeinc = WEEKSECS;
