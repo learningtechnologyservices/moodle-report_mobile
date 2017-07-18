@@ -119,13 +119,12 @@ if (empty($readers)) {
         $usagereport = new usage_report($report, $id, $modid, $logreader, $origin, $timestart, $timeend, $modaction, $url,
             $download);
         $usagereport->setup_table();
-    }
 
-    // Trigger a report viewed event.
-    //$event = \report_mobile\event\usage_report_viewed::create(array('context' => $context, 'relateduserid' => $user,
-    //    'other' => array('groupid' => $group, 'date' => $date, 'modid' => $modid, 'modaction' => $modaction,
-    //    'logformat' => $logformat)));
-    //$event->trigger();
+        // Trigger a report viewed event.
+        $event = \report_mobile\event\usage_report_viewed::create(array('context' => $context, 'other' => array('modid' => $modid,
+            'modaction' => $modaction, 'report' => $report, 'origin' => $origin, 'logreader' => $logreader)));
+        $event->trigger();
+    }
 
     if (empty($download)) {
         echo $output->header();

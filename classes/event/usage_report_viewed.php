@@ -28,14 +28,6 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * The report_mobile usage report viewed event class.
  *
- * @property-read array $other {
- *      Extra information about the event.
- *
- *      - int modid: Module id for which logs were displayed.
- *      - string modaction: Module action.
- *      - string logformat: Log format in which logs were displayed.
- * }
- *
  * @package    report_mobile
  * @copyright  2017 Juan Leyva
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -58,7 +50,7 @@ class usage_report_viewed extends \core\event\base {
      * @return string
      */
     public static function get_name() {
-        return get_string('eventreportviewed', 'report_mobile');
+        return get_string('usagereportviewed', 'report_mobile');
     }
 
     /**
@@ -85,7 +77,7 @@ class usage_report_viewed extends \core\event\base {
      * @return \moodle_url
      */
     public function get_url() {
-        return new \moodle_url('/report/mobile/index.php', array('id' => $this->courseid));
+        return new \moodle_url('/report/mobile/index.php', array('id' => $this->courseid, 'report' => $this->other['report']));
     }
 
     /**
@@ -105,12 +97,12 @@ class usage_report_viewed extends \core\event\base {
             throw new \coding_exception('The \'modaction\' value must be set in other.');
         }
 
-        if (!isset($this->other['logformat'])) {
-            throw new \coding_exception('The \'logformat\' value must be set in other.');
+        if (!isset($this->other['report'])) {
+            throw new \coding_exception('The \'report\' value must be set in other.');
         }
 
-        if (!isset($this->relateduserid)) {
-            throw new \coding_exception('The \'relateduserid\' must be set.');
+        if (!isset($this->other['logreader'])) {
+            throw new \coding_exception('The \'logreader\' value must be set in other.');
         }
     }
 
