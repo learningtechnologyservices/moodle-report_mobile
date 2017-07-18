@@ -29,6 +29,7 @@ $string['devicefirstused'] = 'Device first used';
 $string['devicelastused'] = 'Device last used';
 $string['devicereportviewed'] = 'Device report viewed';
 $string['filterbydate'] = 'Filter by date';
+$string['mobile:view'] = 'View the mobile app usage reports';
 $string['model'] = 'Device model';
 $string['mobileapp'] = 'Mobile app';
 $string['nologreaderenabled'] = 'No log reader enabled';
