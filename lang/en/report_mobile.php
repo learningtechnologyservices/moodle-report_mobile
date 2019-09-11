@@ -36,6 +36,7 @@ $string['nologreaderenabled'] = 'No log reader enabled';
 $string['origin'] = 'Origin';
 $string['platform'] = 'Device platform';
 $string['pluginname'] = 'Mobile app usage';
+$string['privacy:metadata'] = 'The Mobile app usage report only shows data stored in other locations.';
 $string['source'] = 'Source';
 $string['startdategreaterthanend'] = 'Start date can\'t be greater than end date.';
 $string['usagereportviewed'] = 'Usage report viewed';

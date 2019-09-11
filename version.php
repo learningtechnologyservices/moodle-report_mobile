@@ -28,4 +28,4 @@ $plugin->version   = 2017050900; // The current plugin version (Date: YYYYMMDDXX
 $plugin->requires  = 2015111600; // Requires this Moodle version.
 $plugin->component = 'report_mobile'; // Full name of the plugin (used for diagnostics).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '3.0.0';
+$plugin->release   = '3.5.0';
